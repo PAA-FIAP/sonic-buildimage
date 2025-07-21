@@ -6,22 +6,45 @@ on:
 jobs:
   build-sonic:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout SONiC source
         uses: actions/checkout@v4
 
-      - name: Set up Docker permission
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make gawk curl git-core \
+            python3-pip unzip libssl-dev libelf-dev \
+            autoconf automake libtool xz-utils libxml2-utils \
+            bc libpci-dev libnl-3-dev libnl-genl-3-dev \
+            libdbus-1-dev iproute2 libcap-dev
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Ensure user is in Docker group
         run: |
           sudo usermod -aG docker $USER || true
-          sudo chown root:docker /var/run/docker.sock || true
+          newgrp docker || true
 
-      - name: Build SONiC in docker
+      - name: Verify Docker access
+        run: docker version
+
+      - name: Initialize SONiC build
         run: |
-          docker run --rm -v ${{ github.workspace }}:/sonic \
-            -w /sonic \
-            sonicdev-microsoft.azurecr.io/sonic-slave-buster:latest \
-            bash -c "make init && make configure PLATFORM=juniper_qfx5200_32c && make all"
+          make init
+
+      - name: Configure SONiC for QFX5200
+        run: |
+          make configure PLATFORM=juniper_qfx5200_32c
+
+      - name: Build SONiC
+        run: |
+          make all
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
