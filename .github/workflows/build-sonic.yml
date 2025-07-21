@@ -29,7 +29,7 @@ jobs:
             # Install required tools
             sudo apt-get install -y make g++ curl git
 
-            # SONiC build commands
+            # SONiC build
             make init
             make configure PLATFORM=juniper_qfx5200_32c
             make all
