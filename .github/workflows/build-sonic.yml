@@ -1,49 +1,44 @@
 name: Build SONiC for QFX5200
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  build:
+  build-sonic:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout SONiC source
         uses: actions/checkout@v4
 
-      - name: Build SONiC inside container (non-root)
+      - name: Set up Docker build env and run build
         uses: addnab/docker-run-action@v3
         with:
           image: sonicdev-microsoft.azurecr.io/sonic-slave-buster:latest
-          options: -u 1000
+          options: -u 1000 --privileged
+          shell: bash
           run: |
-            # Fix Debian Buster archive issue
+            # Fix Debian Buster EOL issues
             sudo sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list
             sudo sed -i 's|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list
             sudo sed -i '/^deb.*updates/d' /etc/apt/sources.list
             sudo apt-get update -o Acquire::Check-Valid-Until=false
-
-            # Install required tools
             sudo apt-get install -y make g++ curl git
 
-            # SONiC build
+            # Set up build environment
+            cd $GITHUB_WORKSPACE
             make init
             make configure PLATFORM=juniper_qfx5200_32c
             make all
 
-      - name: Archive built image
-        if: success()
-        run: |
-          mkdir -p artifacts
-          cp -v target/*.bin artifacts/ || true
-          cp -v target/*.tar.gz artifacts/ || true
+            # Copy artifacts for upload
+            mkdir -p $GITHUB_WORKSPACE/artifacts
+            find ./target -type f \( -name "*.bin" -o -name "*.tar.gz" \) -exec cp {} $GITHUB_WORKSPACE/artifacts/ \;
 
-      - name: Upload image artifact
-        if: success()
+      - name: Upload built image artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: sonic-image-qfx5200
+          name: sonic-build-output
           path: artifacts/
