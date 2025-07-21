@@ -11,25 +11,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout SONiC build repo
+      - name: Checkout SONiC source
         uses: actions/checkout@v4
 
-      - name: Build SONiC in container
+      - name: Build SONiC inside container (non-root)
         uses: addnab/docker-run-action@v3
         with:
           image: sonicdev-microsoft.azurecr.io/sonic-slave-buster:latest
           options: -u 1000
           run: |
-            # Fix Debian Buster repo (EOL)
+            # Fix Debian Buster archive issue
             sudo sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list
             sudo sed -i 's|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list
             sudo sed -i '/^deb.*updates/d' /etc/apt/sources.list
             sudo apt-get update -o Acquire::Check-Valid-Until=false
 
-            # Install basic required tools
-            sudo apt-get install -y sudo make g++ curl git
+            # Install required tools
+            sudo apt-get install -y make g++ curl git
 
-            # Start SONiC build process
+            # SONiC build commands
             make init
             make configure PLATFORM=juniper_qfx5200_32c
             make all
@@ -41,7 +41,7 @@ jobs:
           cp -v target/*.bin artifacts/ || true
           cp -v target/*.tar.gz artifacts/ || true
 
-      - name: Upload image artifacts
+      - name: Upload image artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
