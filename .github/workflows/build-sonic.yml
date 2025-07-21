@@ -2,34 +2,40 @@ name: Build SONiC QFX5200 Image
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ master ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: docker:stable
+
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
 
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v2
-
-      - name: Install Dependencies
+      - name: Install Docker & Dependencies
         run: |
-          apk add --no-cache bash git make python3 py3-pip curl
-          pip3 install --upgrade pip
+          sudo apt-get update
+          sudo apt-get install -y make docker.io python3-pip
+          sudo usermod -aG docker $USER
+          newgrp docker
 
-      - name: Build SONiC for QFX5200
+      - name: Setup Builder User
         run: |
-          git config --global --add safe.directory /__w/sonic-buildimage/sonic-buildimage
-          make init
-          make configure PLATFORM=juniper_qfx5200-r0
+          sudo useradd -m builder
+          sudo usermod -aG docker builder
+          sudo chown -R builder:builder .
+          echo "builder ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/builder
+
+      - name: Run Build as builder
+        run: |
+          sudo -u builder -i bash -c "
+          cd $GITHUB_WORKSPACE &&
+          make init &&
+          make configure PLATFORM=juniper_qfx5200-r0 &&
           make target/sonic-device-image-juniper_qfx5200-r0.bin
+          "
 
       - name: Upload Artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sonic-qfx5200
