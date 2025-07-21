@@ -8,34 +8,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout SONiC
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      - name: Set up Docker container with builder user
+      - name: Pull and Set Up Docker Environment
         run: |
           docker pull debian:buster
-          docker run --rm -v $(pwd):/workspace \
-            -w /workspace \
-            -e "DEBIAN_FRONTEND=noninteractive" \
-            --user $(id -u):$(id -g) \
-            debian:buster bash -c "
-              apt update &&
-              apt install -y git make python3 python3-pip curl docker.io sudo g++ \
-              && groupadd docker || true \
-              && useradd -m builder || true \
-              && usermod -aG docker builder &&
-              chown -R builder:docker /workspace &&
-              su builder -c '
-                cd /workspace &&
-                git remote set-url origin https://github.com/${{ github.repository }}.git &&
-                git fetch origin &&
-                make init &&
-                make configure PLATFORM=juniper_qfx5200-r0 &&
-                make target/sonic-device-image-juniper_qfx5200-r0.bin
-              '
-            "
+
+          # Stage 1: Setup container environment as root
+          docker run --name sonic-build-setup -v ${{ github.workspace }}:/workspace -w /workspace debian:buster bash -c "
+            apt update &&
+            apt install -y git make python3 python3-pip curl sudo g++ &&
+            groupadd -g 998 docker || true &&
+            useradd -m -u 1001 -g 998 builder &&
+            chown -R builder:docker /workspace
+          "
+
+      - name: Run SONiC Build as builder user
+        run: |
+          docker commit sonic-build-setup sonic-builder-image
+
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace --user 1001:998 sonic-builder-image bash -c "
+            git remote set-url origin https://github.com/${{ github.repository }}.git &&
+            git fetch origin &&
+            make init &&
+            make configure PLATFORM=juniper_qfx5200-r0 &&
+            make target/sonic-device-image-juniper_qfx5200-r0.bin
+          "
 
       - name: Upload SONiC Image
         if: always()
