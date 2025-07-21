@@ -2,38 +2,32 @@ name: Build SONiC for QFX5200
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   build-sonic:
     runs-on: ubuntu-latest
 
-    container:
-      image: sonicdev-microsoft.azurecr.io/sonic-slave-buster:latest
-      options: --user 1000  # 👈 Run as non-root (UID 1000 is "builder" user)
-
     steps:
-      - name: Checkout source
+      - name: Checkout source (as root)
         uses: actions/checkout@v4
 
-      - name: Fix APT for Debian Buster EOL
-        run: |
-          sudo sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list
-          sudo sed -i 's|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list
-          sudo sed -i '/^deb.*updates/d' /etc/apt/sources.list
-          sudo apt-get update -o Acquire::Check-Valid-Until=false
+      - name: Set up build container with non-root user
+        uses: addnab/docker-run-action@v3
+        with:
+          image: sonicdev-microsoft.azurecr.io/sonic-slave-buster:latest
+          options: -u 1000  # run as UID 1000 (builder)
+          shell: bash
+          run: |
+            # Fix apt sources due to Debian Buster EOL
+            sudo sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list
+            sudo sed -i 's|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list
+            sudo sed -i '/^deb.*updates/d' /etc/apt/sources.list
+            sudo apt-get update -o Acquire::Check-Valid-Until=false
+            sudo apt-get install -y make g++ curl git
 
-      - name: Install required tools
-        run: |
-          sudo apt-get install -y make g++ curl git
-
-      - name: Configure SONiC build
-        run: |
-          make init
-          make configure PLATFORM=juniper_qfx5200_32c
-
-      - name: Build SONiC image
-        run: |
-          make all
+            # Configure and build
+            make init
+            make configure PLATFORM=juniper_qfx5200_32c
+            make all
