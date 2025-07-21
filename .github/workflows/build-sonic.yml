@@ -1,4 +1,4 @@
-name: Build SONiC QFX5200 Image
+name: Build SONiC QFX5200 with DUE
 
 on:
   workflow_dispatch:
@@ -13,33 +13,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Pull and Set Up Docker Environment
+      - name: Set up Docker (if not already)
         run: |
-          docker pull debian:buster
+          sudo apt-get update
+          sudo apt-get install -y docker.io
 
-          # Stage 1: Setup container environment as root
-          docker run --name sonic-build-setup -v ${{ github.workspace }}:/workspace -w /workspace debian:buster bash -c "
-            apt update &&
-            apt install -y git make python3 python3-pip curl sudo g++ &&
-            groupadd -g 998 docker || true &&
-            useradd -m -u 1001 -g 998 builder &&
-            chown -R builder:docker /workspace
-          "
-
-      - name: Run SONiC Build as builder user
+      - name: Start SONiC DUE Build
         run: |
-          docker commit sonic-build-setup sonic-builder-image
+          docker run --rm -v ${{ github.workspace }}:/sonic -w /sonic \
+            docker.io/sonicdev-microsoft.azurecr.io:sonic-slave-buster \
+            bash -c "
+              make init &&
+              make configure PLATFORM=juniper_qfx5200-r0 &&
+              make target/sonic-device-image-juniper_qfx5200-r0.bin
+            "
 
-          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace --user 1001:998 sonic-builder-image bash -c "
-            git remote set-url origin https://github.com/${{ github.repository }}.git &&
-            git fetch origin &&
-            make init &&
-            make configure PLATFORM=juniper_qfx5200-r0 &&
-            make target/sonic-device-image-juniper_qfx5200-r0.bin
-          "
-
-      - name: Upload SONiC Image
-        if: always()
+      - name: Upload SONiC QFX5200 Image
         uses: actions/upload-artifact@v4
         with:
           name: sonic-qfx5200
