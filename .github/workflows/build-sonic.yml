@@ -1,8 +1,6 @@
 name: Build SONiC for QFX5200
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -13,32 +11,22 @@ jobs:
       - name: Checkout SONiC source
         uses: actions/checkout@v4
 
-      - name: Set up Docker build env and run build
-        uses: addnab/docker-run-action@v3
-        with:
-          image: sonicdev-microsoft.azurecr.io/sonic-slave-buster:latest
-          options: -u 1000 --privileged
-          shell: bash
-          run: |
-            # Fix Debian Buster EOL issues
-            sudo sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list
-            sudo sed -i 's|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list
-            sudo sed -i '/^deb.*updates/d' /etc/apt/sources.list
-            sudo apt-get update -o Acquire::Check-Valid-Until=false
-            sudo apt-get install -y make g++ curl git
+      - name: Set up Docker permission
+        run: |
+          sudo usermod -aG docker $USER || true
+          sudo chown root:docker /var/run/docker.sock || true
 
-            # Set up build environment
-            cd $GITHUB_WORKSPACE
-            make init
-            make configure PLATFORM=juniper_qfx5200_32c
-            make all
+      - name: Build SONiC in docker
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/sonic \
+            -w /sonic \
+            sonicdev-microsoft.azurecr.io/sonic-slave-buster:latest \
+            bash -c "make init && make configure PLATFORM=juniper_qfx5200_32c && make all"
 
-            # Copy artifacts for upload
-            mkdir -p $GITHUB_WORKSPACE/artifacts
-            find ./target -type f \( -name "*.bin" -o -name "*.tar.gz" \) -exec cp {} $GITHUB_WORKSPACE/artifacts/ \;
-
-      - name: Upload built image artifacts
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: sonic-build-output
-          path: artifacts/
+          name: sonic-juniper-qfx5200
+          path: |
+            target/sonic-juniper_qfx5200_32c.bin
+            target/sonic-juniper_qfx5200_32c.tar.gz
