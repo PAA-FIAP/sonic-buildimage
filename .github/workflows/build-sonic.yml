@@ -1,33 +1,49 @@
 name: Build SONiC for QFX5200
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
-  build-sonic:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source (as root)
+      - name: Checkout SONiC build repo
         uses: actions/checkout@v4
 
-      - name: Set up build container with non-root user
+      - name: Build SONiC in container
         uses: addnab/docker-run-action@v3
         with:
           image: sonicdev-microsoft.azurecr.io/sonic-slave-buster:latest
-          options: -u 1000  # run as UID 1000 (builder)
-          shell: bash
+          options: -u 1000
           run: |
-            # Fix apt sources due to Debian Buster EOL
+            # Fix Debian Buster repo (EOL)
             sudo sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list
             sudo sed -i 's|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list
             sudo sed -i '/^deb.*updates/d' /etc/apt/sources.list
             sudo apt-get update -o Acquire::Check-Valid-Until=false
-            sudo apt-get install -y make g++ curl git
 
-            # Configure and build
+            # Install basic required tools
+            sudo apt-get install -y sudo make g++ curl git
+
+            # Start SONiC build process
             make init
             make configure PLATFORM=juniper_qfx5200_32c
             make all
+
+      - name: Archive built image
+        if: success()
+        run: |
+          mkdir -p artifacts
+          cp -v target/*.bin artifacts/ || true
+          cp -v target/*.tar.gz artifacts/ || true
+
+      - name: Upload image artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-image-qfx5200
+          path: artifacts/
