@@ -12,8 +12,7 @@ jobs:
 
     container:
       image: sonicdev-microsoft.azurecr.io/sonic-slave-buster:latest
-      # Remove "--user root"
-      # Let the container default to its non-root builder user
+      # Do NOT include "--user root"
 
     steps:
       - name: Checkout source
@@ -28,7 +27,6 @@ jobs:
 
       - name: Install required tools
         run: |
-          sudo apt-get update -o Acquire::Check-Valid-Until=false
           sudo apt-get install -y make g++ curl git
 
       - name: Configure build
