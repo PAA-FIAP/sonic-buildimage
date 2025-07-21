@@ -12,7 +12,8 @@ jobs:
 
     container:
       image: sonicdev-microsoft.azurecr.io/sonic-slave-buster:latest
-      options: --user root
+      # Remove "--user root"
+      # Let the container default to its non-root builder user
 
     steps:
       - name: Checkout source
@@ -20,15 +21,15 @@ jobs:
 
       - name: Fix APT for Debian Buster EOL
         run: |
-          sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list
-          sed -i 's|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list
-          sed -i '/^deb.*updates/d' /etc/apt/sources.list
-          apt-get update -o Acquire::Check-Valid-Until=false
+          sudo sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list
+          sudo sed -i 's|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list
+          sudo sed -i '/^deb.*updates/d' /etc/apt/sources.list
+          sudo apt-get update -o Acquire::Check-Valid-Until=false
 
       - name: Install required tools
         run: |
-          apt-get update -o Acquire::Check-Valid-Until=false
-          apt-get install -y sudo make g++ curl git
+          sudo apt-get update -o Acquire::Check-Valid-Until=false
+          sudo apt-get install -y make g++ curl git
 
       - name: Configure build
         run: |
