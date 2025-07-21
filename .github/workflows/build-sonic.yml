@@ -8,20 +8,30 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: sonicdev-microsoft.azurecr.io/sonic-slave-buster:latest
-      options: --user root
+      options: --user root  # We're root, so we patch the makefile
     steps:
-      - name: Checkout repo
+      - name: Checkout SONiC repo
         uses: actions/checkout@v3
 
       - name: Setup git safe directory
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Update submodules
-        run: |
-          git submodule update --init --recursive
+      - name: Init submodules
+        run: git submodule update --init --recursive
 
-      - name: Configure and build SONiC for QFX5200
+      - name: Patch Makefile to allow root in CI
+        run: |
+          sed -i '/docker group and use your user account/d' Makefile.work
+          sed -i '/root or sudo are not supported/d' Makefile.work
+
+      - name: Build SONiC for QFX5200
         run: |
           make init
           make configure PLATFORM=juniper_qfx5200-r0
           make target/sonic-juniper_qfx5200-r0.bin
+
+      - name: Upload SONiC image
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonic-juniper_qfx5200
+          path: target/sonic-juniper_qfx5200-r0.bin
