@@ -21,7 +21,6 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          # Removed apt-get install for python3-jinja2-cli as it was failing
           sudo apt-get install -y make gawk curl git-core \
             unzip libssl-dev libelf-dev \
             autoconf automake libtool xz-utils libxml2-utils \
@@ -29,6 +28,13 @@ jobs:
             libdbus-1-dev iproute2 libcap-dev
           # Explicitly install jinja2-cli for the current user to ~/.local/bin
           PIP_USER=true pip install jinja2-cli
+
+      - name: Add Python user scripts to PATH
+        run: |
+          # Add the user-specific Python bin directory to the PATH for all subsequent steps.
+          # This ensures executables installed with 'pip install --user' are found.
+          echo "PATH=$(python3 -m site --user-base)/bin:$PATH" >> $GITHUB_ENV
+          echo "Added $(python3 -m site --user-base)/bin to GITHUB_ENV PATH"
 
       - name: Debug j2 installation path
         run: |
@@ -42,37 +48,10 @@ jobs:
           python3 -m site --user-base
           echo "--- Current PATH ---"
           echo $PATH
-          echo "--- Verify j2 command availability (before symlink) ---"
+          echo "--- Verify j2 command availability ---"
           which j2 || echo "j2 command not found in PATH."
           type j2 || echo "type j2 command not found."
 
-
-      - name: Make j2 command globally available and verify
-        run: |
-          # Ensure the user's local bin directory exists before trying to find/symlink j2
-          USER_BIN_DIR="$(python3 -m site --user-base)/bin"
-          mkdir -p "$USER_BIN_DIR"
-          echo "Ensured directory exists: $USER_BIN_DIR"
-
-          # Find the j2 executable path
-          J2_PATH=$(find "$USER_BIN_DIR" -name j2 -type f -executable)
-          if [ -z "$J2_PATH" ]; then
-            echo "Error: j2 executable not found after pip install. Check pip installation logs and debug output above."
-            exit 1
-          fi
-          echo "Found j2 at: $J2_PATH"
-
-          # Create a symbolic link for 'j2' in /usr/local/bin to ensure it's found by make.
-          sudo ln -sf "$J2_PATH" /usr/local/bin/j2
-          echo "Symlinked j2 to /usr/local/bin/j2"
-
-          # Verify j2 is now in PATH
-          if command -v j2 &> /dev/null; then
-            echo "j2 is now found in PATH: $(command -v j2)"
-          else
-            echo "Error: j2 is still not found in PATH after symlinking. Check symlink target."
-            exit 1
-          fi
 
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
@@ -118,7 +97,7 @@ jobs:
 
       - name: Initialize SONiC build
         run: |
-          # 'j2' should now be globally available via the symlink.
+          # 'j2' should now be globally available via the PATH modification.
           # This step prepares the SONiC build environment.
           make init
 
