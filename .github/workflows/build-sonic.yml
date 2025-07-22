@@ -31,8 +31,13 @@ jobs:
 
       - name: Make j2 command globally available and verify
         run: |
+          # Ensure the user's local bin directory exists before trying to find/symlink j2
+          USER_BIN_DIR="$(python3 -m site --user-base)/bin"
+          mkdir -p "$USER_BIN_DIR"
+          echo "Ensured directory exists: $USER_BIN_DIR"
+
           # Find the j2 executable path
-          J2_PATH=$(find "$(python3 -m site --user-base)/bin" -name j2 -type f -executable)
+          J2_PATH=$(find "$USER_BIN_DIR" -name j2 -type f -executable)
           if [ -z "$J2_PATH" ]; then
             echo "Error: j2 executable not found after pip install. Check pip installation logs."
             exit 1
