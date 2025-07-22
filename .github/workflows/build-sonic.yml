@@ -29,6 +29,15 @@ jobs:
           # Install jinja2-cli for the 'j2' command.
           pip install jinja2-cli
 
+      - name: Debug j2 installation path
+        run: |
+          echo "--- Contents of ~/.local/bin ---"
+          ls -la ~/.local/bin || echo "~/.local/bin not found or empty."
+          echo "--- pip show jinja2-cli ---"
+          pip show jinja2-cli || echo "jinja2-cli not found by pip show."
+          echo "--- Python user base directory ---"
+          python3 -m site --user-base
+
       - name: Make j2 command globally available and verify
         run: |
           # Ensure the user's local bin directory exists before trying to find/symlink j2
@@ -39,7 +48,7 @@ jobs:
           # Find the j2 executable path
           J2_PATH=$(find "$USER_BIN_DIR" -name j2 -type f -executable)
           if [ -z "$J2_PATH" ]; then
-            echo "Error: j2 executable not found after pip install. Check pip installation logs."
+            echo "Error: j2 executable not found after pip install. Check pip installation logs and debug output above."
             exit 1
           fi
           echo "Found j2 at: $J2_PATH"
@@ -52,7 +61,7 @@ jobs:
           if command -v j2 &> /dev/null; then
             echo "j2 is now found in PATH: $(command -v j2)"
           else
-            echo "Error: j2 is still not found in PATH after symlinking."
+            echo "Error: j2 is still not found in PATH after symlinking. Check symlink target."
             exit 1
           fi
 
