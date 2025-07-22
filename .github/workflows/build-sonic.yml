@@ -26,8 +26,8 @@ jobs:
             autoconf automake libtool xz-utils libxml2-utils \
             bc libpci-dev libnl-3-dev libnl-genl-3-dev \
             libdbus-1-dev iproute2 libcap-dev
-          # Explicitly install jinja2-cli for the current user to ~/.local/bin
-          PIP_USER=true pip install jinja2-cli
+          # Install jinja2-cli directly to system path using sudo pip
+          sudo pip install jinja2-cli
 
       - name: Debug j2 installation path
         run: |
@@ -35,10 +35,6 @@ jobs:
           pip list
           echo "--- pip freeze ---"
           pip freeze
-          echo "--- Contents of ~/.local/bin ---"
-          ls -la ~/.local/bin || echo "~/.local/bin not found or empty."
-          echo "--- Python user base directory ---"
-          python3 -m site --user-base
           echo "--- Current PATH ---"
           echo $PATH
           echo "--- Verify j2 command availability ---"
@@ -90,21 +86,18 @@ jobs:
 
       - name: Initialize SONiC build
         run: |
-          # Explicitly pass the Python user's bin directory to the PATH for this make command.
-          export PATH="$(python3 -m site --user-base)/bin:$PATH"
+          # j2 should now be globally available.
           make init
 
       - name: Configure SONiC for QFX5200
         run: |
-          # Explicitly pass the Python user's bin directory to the PATH for this make command.
+          # j2 should now be globally available.
           # 'sudo' was removed previously as per SONiC's requirement.
-          export PATH="$(python3 -m site --user-base)/bin:$PATH"
           make configure PLATFORM=juniper_qfx5200_32c
 
       - name: Build SONiC
         run: |
-          # Explicitly pass the Python user's bin directory to the PATH for this make command.
-          export PATH="$(python3 -m site --user-base)/bin:$PATH"
+          # j2 should now be globally available.
           make all
 
       - name: Upload build artifacts
