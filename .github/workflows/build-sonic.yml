@@ -29,13 +29,6 @@ jobs:
           # Explicitly install jinja2-cli for the current user to ~/.local/bin
           PIP_USER=true pip install jinja2-cli
 
-      - name: Set job-level PATH for Python user scripts
-        run: |
-          # Add the user-specific Python bin directory to the PATH for all subsequent steps.
-          # This ensures executables installed with 'pip install --user' are found.
-          echo "PATH=$(python3 -m site --user-base)/bin:$PATH" >> $GITHUB_ENV
-          echo "Added $(python3 -m site --user-base)/bin to GITHUB_ENV PATH"
-
       - name: Debug j2 installation path
         run: |
           echo "--- pip list ---"
@@ -97,21 +90,21 @@ jobs:
 
       - name: Initialize SONiC build
         run: |
-          # Explicitly pass the PATH to the make command.
-          export PATH="${{ env.PATH }}"
+          # Explicitly pass the Python user's bin directory to the PATH for this make command.
+          export PATH="$(python3 -m site --user-base)/bin:$PATH"
           make init
 
       - name: Configure SONiC for QFX5200
         run: |
-          # Explicitly pass the PATH to the make command.
+          # Explicitly pass the Python user's bin directory to the PATH for this make command.
           # 'sudo' was removed previously as per SONiC's requirement.
-          export PATH="${{ env.PATH }}"
+          export PATH="$(python3 -m site --user-base)/bin:$PATH"
           make configure PLATFORM=juniper_qfx5200_32c
 
       - name: Build SONiC
         run: |
-          # Explicitly pass the PATH to the make command.
-          export PATH="${{ env.PATH }}"
+          # Explicitly pass the Python user's bin directory to the PATH for this make command.
+          export PATH="$(python3 -m site --user-base)/bin:$PATH"
           make all
 
       - name: Upload build artifacts
