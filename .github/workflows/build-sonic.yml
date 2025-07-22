@@ -98,24 +98,21 @@ jobs:
       - name: Initialize SONiC build
         run: |
           # Explicitly pass the PATH to the make command.
+          export PATH="${{ env.PATH }}"
           make init
-        env:
-          PATH: ${{ env.PATH }}
 
       - name: Configure SONiC for QFX5200
         run: |
           # Explicitly pass the PATH to the make command.
           # 'sudo' was removed previously as per SONiC's requirement.
+          export PATH="${{ env.PATH }}"
           make configure PLATFORM=juniper_qfx5200_32c
-        env:
-          PATH: ${{ env.PATH }}
 
       - name: Build SONiC
         run: |
           # Explicitly pass the PATH to the make command.
+          export PATH="${{ env.PATH }}"
           make all
-        env:
-          PATH: ${{ env.PATH }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
