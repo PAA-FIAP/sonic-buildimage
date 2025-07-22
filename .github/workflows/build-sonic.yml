@@ -21,26 +21,31 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          # Attempt to install jinja2-cli via apt-get first (might fail on some runners)
+          # Removed apt-get install for python3-jinja2-cli as it was failing
           sudo apt-get install -y make gawk curl git-core \
             unzip libssl-dev libelf-dev \
             autoconf automake libtool xz-utils libxml2-utils \
             bc libpci-dev libnl-3-dev libnl-genl-3-dev \
-            libdbus-1-dev iproute2 libcap-dev \
-            python3-jinja2-cli || echo "apt-get install python3-jinja2-cli failed, falling back to pip."
-          # Always run pip install as a reliable fallback, even if apt-get succeeds (harmless)
-          pip install jinja2-cli
+            libdbus-1-dev iproute2 libcap-dev
+          # Explicitly install jinja2-cli for the current user to ~/.local/bin
+          PIP_USER=true pip install jinja2-cli
 
       - name: Debug j2 installation path
         run: |
+          echo "--- pip list ---"
+          pip list
+          echo "--- pip freeze ---"
+          pip freeze
           echo "--- Contents of ~/.local/bin ---"
           ls -la ~/.local/bin || echo "~/.local/bin not found or empty."
-          echo "--- pip show jinja2-cli ---"
-          pip show jinja2-cli || echo "jinja2-cli not found by pip show."
           echo "--- Python user base directory ---"
           python3 -m site --user-base
-          echo "--- Verify j2 command availability ---"
-          command -v j2 || echo "j2 command not found in PATH."
+          echo "--- Current PATH ---"
+          echo $PATH
+          echo "--- Verify j2 command availability (before symlink) ---"
+          which j2 || echo "j2 command not found in PATH."
+          type j2 || echo "type j2 command not found."
+
 
       - name: Make j2 command globally available and verify
         run: |
@@ -113,7 +118,7 @@ jobs:
 
       - name: Initialize SONiC build
         run: |
-          # 'j2' should now be globally available via apt-get or pip.
+          # 'j2' should now be globally available via the symlink.
           # This step prepares the SONiC build environment.
           make init
 
