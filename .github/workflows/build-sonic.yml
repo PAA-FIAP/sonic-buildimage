@@ -27,7 +27,6 @@ jobs:
             bc libpci-dev libnl-3-dev libnl-genl-3-dev \
             libdbus-1-dev iproute2 libcap-dev
           # Install jinja2-cli for the 'j2' command.
-          # actions/setup-python should ensure it's in PATH.
           pip install jinja2-cli
 
       - name: Set up Docker
@@ -64,19 +63,25 @@ jobs:
 
       - name: Initialize SONiC build
         run: |
-          # The PATH should now be correctly set by the 'Set up Python' step.
+          # Explicitly add the Python user base bin directory to PATH for this make command.
+          # This ensures 'j2' is found by make's sub-processes.
+          export PATH="$(python3 -m site --user-base)/bin:$PATH"
           # This step prepares the SONiC build environment.
           make init
 
       - name: Configure SONiC for QFX5200
         run: |
-          # The PATH should now be correctly set by the 'Set up Python' step.
+          # Explicitly add the Python user base bin directory to PATH for this make command.
+          # This ensures 'j2' is found by make's sub-processes.
+          export PATH="$(python3 -m site --user-base)/bin:$PATH"
           # 'sudo' was removed previously as per SONiC's requirement.
           make configure PLATFORM=juniper_qfx5200_32c
 
       - name: Build SONiC
         run: |
-          # The PATH should now be correctly set by the 'Set up Python' step.
+          # Explicitly add the Python user base bin directory to PATH for this make command.
+          # This ensures 'j2' is found by make's sub-processes.
+          export PATH="$(python3 -m site --user-base)/bin:$PATH"
           # This step initiates the full SONiC build process, which includes
           # building necessary Docker images internally.
           make all
