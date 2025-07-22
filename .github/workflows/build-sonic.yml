@@ -29,6 +29,12 @@ jobs:
           # Install jinja2-cli for the 'j2' command.
           pip install jinja2-cli
 
+      - name: Make j2 command globally available
+        run: |
+          # Create a symbolic link for 'j2' in /usr/local/bin to ensure it's found by make.
+          # This is a more robust way to ensure the command is in PATH for all sub-processes.
+          sudo ln -sf "$(python3 -m site --user-base)/bin/j2" /usr/local/bin/j2
+
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
 
@@ -55,33 +61,37 @@ jobs:
       - name: Debug Dockerfiles
         run: |
           echo "--- Contents of Dockerfile (if exists) ---"
-          cat Dockerfile || echo "Dockerfile not found or empty."
+          # Check if Dockerfile exists before trying to cat it
+          if [ -f Dockerfile ]; then
+            cat Dockerfile
+          else
+            echo "Dockerfile not found."
+          fi
           echo "--- Contents of Dockerfile.cleanup (if exists) ---"
-          cat Dockerfile.cleanup || echo "Dockerfile.cleanup not found or empty."
+          # Check if Dockerfile.cleanup exists before trying to cat it
+          if [ -f Dockerfile.cleanup ]; then
+            cat Dockerfile.cleanup
+          else
+            echo "Dockerfile.cleanup not found or empty."
+          fi
           echo "--- Listing files in current directory ---"
           ls -la
 
       - name: Initialize SONiC build
         run: |
-          # Explicitly add the Python user base bin directory to PATH for this make command.
-          # This ensures 'j2' is found by make's sub-processes.
-          export PATH="$(python3 -m site --user-base)/bin:$PATH"
+          # 'j2' should now be globally available via the symlink.
           # This step prepares the SONiC build environment.
           make init
 
       - name: Configure SONiC for QFX5200
         run: |
-          # Explicitly add the Python user base bin directory to PATH for this make command.
-          # This ensures 'j2' is found by make's sub-processes.
-          export PATH="$(python3 -m site --user-base)/bin:$PATH"
+          # 'j2' should now be globally available via the symlink.
           # 'sudo' was removed previously as per SONiC's requirement.
           make configure PLATFORM=juniper_qfx5200_32c
 
       - name: Build SONiC
         run: |
-          # Explicitly add the Python user base bin directory to PATH for this make command.
-          # This ensures 'j2' is found by make's sub-processes.
-          export PATH="$(python3 -m site --user-base)/bin:$PATH"
+          # 'j2' should now be globally available via the symlink.
           # This step initiates the full SONiC build process, which includes
           # building necessary Docker images internally.
           make all
