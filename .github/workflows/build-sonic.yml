@@ -33,6 +33,7 @@ jobs:
           # '|| true' prevents the step from failing if the user is already in the group.
           sudo usermod -aG docker $USER || true
           # 'newgrp docker' activates the new group membership for the current shell session.
+          # This is crucial for the subsequent 'make' commands to recognize the new group.
           newgrp docker || true
 
       - name: Verify Docker access
@@ -45,10 +46,9 @@ jobs:
 
       - name: Configure SONiC for QFX5200
         run: |
-          # Running 'make configure' with sudo to address the 'Permission denied' error
-          # when creating '/var/cache/sonic'. This step configures the build for the
-          # specified platform.
-          sudo make configure PLATFORM=juniper_qfx5200_32c
+          # Removed 'sudo' as the SONiC build system explicitly states it's not supported
+          # and requires the user to be in the 'docker' group, which is handled in a prior step.
+          make configure PLATFORM=juniper_qfx5200_32c
 
       - name: Build SONiC
         run: |
