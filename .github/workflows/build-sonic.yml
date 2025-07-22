@@ -34,6 +34,8 @@ jobs:
           sudo usermod -aG docker $USER || true
           # 'newgrp docker' activates the new group membership for the current shell session.
           # This is crucial for the subsequent 'make' commands to recognize the new group.
+          # Note: Each 'run' step gets a fresh shell, so group membership might need re-activation
+          # or the commands requiring it should be in the same 'run' block.
           newgrp docker || true
 
       - name: Verify Docker access
@@ -51,18 +53,25 @@ jobs:
         run: |
           # Ensure ~/.local/bin is in PATH for the 'j2' command.
           # pip installs executables to this directory, and it needs to be in PATH for scripts to find them.
+          # This export is now explicitly added to this run command.
           export PATH="$HOME/.local/bin:$PATH"
           # This step prepares the SONiC build environment.
           make init
 
       - name: Configure SONiC for QFX5200
         run: |
+          # Ensure ~/.local/bin is in PATH for the 'j2' command.
+          # This export is now explicitly added to this run command to ensure 'j2' is found.
+          export PATH="$HOME/.local/bin:$PATH"
           # Removed 'sudo' as the SONiC build system explicitly states it's not supported
           # and requires the user to be in the 'docker' group, which is handled in a prior step.
           make configure PLATFORM=juniper_qfx5200_32c
 
       - name: Build SONiC
         run: |
+          # Ensure ~/.local/bin is in PATH for the 'j2' command.
+          # This export is now explicitly added to this run command.
+          export PATH="$HOME/.local/bin:$PATH"
           # This step initiates the full SONiC build process, which includes
           # building necessary Docker images internally.
           make all
