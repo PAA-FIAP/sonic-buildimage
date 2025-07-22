@@ -29,11 +29,27 @@ jobs:
           # Install jinja2-cli for the 'j2' command.
           pip install jinja2-cli
 
-      - name: Make j2 command globally available
+      - name: Make j2 command globally available and verify
         run: |
+          # Find the j2 executable path
+          J2_PATH=$(find "$(python3 -m site --user-base)/bin" -name j2 -type f -executable)
+          if [ -z "$J2_PATH" ]; then
+            echo "Error: j2 executable not found after pip install. Check pip installation logs."
+            exit 1
+          fi
+          echo "Found j2 at: $J2_PATH"
+
           # Create a symbolic link for 'j2' in /usr/local/bin to ensure it's found by make.
-          # This is a more robust way to ensure the command is in PATH for all sub-processes.
-          sudo ln -sf "$(python3 -m site --user-base)/bin/j2" /usr/local/bin/j2
+          sudo ln -sf "$J2_PATH" /usr/local/bin/j2
+          echo "Symlinked j2 to /usr/local/bin/j2"
+
+          # Verify j2 is now in PATH
+          if command -v j2 &> /dev/null; then
+            echo "j2 is now found in PATH: $(command -v j2)"
+          else
+            echo "Error: j2 is still not found in PATH after symlinking."
+            exit 1
+          fi
 
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
