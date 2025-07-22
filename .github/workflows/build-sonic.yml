@@ -1,5 +1,4 @@
 name: Build SONiC for QFX5200
-
 on:
   workflow_dispatch:
 
@@ -22,13 +21,18 @@ jobs:
             autoconf automake libtool xz-utils libxml2-utils \
             bc libpci-dev libnl-3-dev libnl-genl-3-dev \
             libdbus-1-dev iproute2 libcap-dev
+          # Install jinja2-cli for the 'j2' command, which was reported as 'command not found'
+          pip install jinja2-cli
 
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
 
       - name: Ensure user is in Docker group
         run: |
+          # Add the current user to the docker group to allow running docker commands without sudo.
+          # '|| true' prevents the step from failing if the user is already in the group.
           sudo usermod -aG docker $USER || true
+          # 'newgrp docker' activates the new group membership for the current shell session.
           newgrp docker || true
 
       - name: Verify Docker access
@@ -36,14 +40,20 @@ jobs:
 
       - name: Initialize SONiC build
         run: |
+          # This step prepares the SONiC build environment.
           make init
 
       - name: Configure SONiC for QFX5200
         run: |
-          make configure PLATFORM=juniper_qfx5200_32c
+          # Running 'make configure' with sudo to address the 'Permission denied' error
+          # when creating '/var/cache/sonic'. This step configures the build for the
+          # specified platform.
+          sudo make configure PLATFORM=juniper_qfx5200_32c
 
       - name: Build SONiC
         run: |
+          # This step initiates the full SONiC build process, which includes
+          # building necessary Docker images internally.
           make all
 
       - name: Upload build artifacts
