@@ -29,7 +29,7 @@ jobs:
           # Explicitly install jinja2-cli for the current user to ~/.local/bin
           PIP_USER=true pip install jinja2-cli
 
-      - name: Add Python user scripts to PATH
+      - name: Set job-level PATH for Python user scripts
         run: |
           # Add the user-specific Python bin directory to the PATH for all subsequent steps.
           # This ensures executables installed with 'pip install --user' are found.
@@ -97,22 +97,25 @@ jobs:
 
       - name: Initialize SONiC build
         run: |
-          # 'j2' should now be globally available via the PATH modification.
-          # This step prepares the SONiC build environment.
+          # Explicitly pass the PATH to the make command.
           make init
+        env:
+          PATH: ${{ env.PATH }}
 
       - name: Configure SONiC for QFX5200
         run: |
-          # 'j2' should now be globally available.
+          # Explicitly pass the PATH to the make command.
           # 'sudo' was removed previously as per SONiC's requirement.
           make configure PLATFORM=juniper_qfx5200_32c
+        env:
+          PATH: ${{ env.PATH }}
 
       - name: Build SONiC
         run: |
-          # 'j2' should now be globally available.
-          # This step initiates the full SONiC build process, which includes
-          # building necessary Docker images internally.
+          # Explicitly pass the PATH to the make command.
           make all
+        env:
+          PATH: ${{ env.PATH }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
