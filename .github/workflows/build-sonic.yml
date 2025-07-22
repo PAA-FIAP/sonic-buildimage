@@ -5,10 +5,8 @@ on:
 jobs:
   build-sonic:
     runs-on: ubuntu-latest
-    # Set environment variables for the entire job
-    env:
-      # Ensure ~/.local/bin is in PATH for the 'j2' command across all steps
-      PATH: ${{ github.home }}/.local/bin:${{ env.PATH }}
+    # Removed the 'env' block for PATH as it was causing a validation error.
+    # PATH will now be modified using 'echo "::add-path::"' in a dedicated step.
     defaults:
       run:
         shell: bash
@@ -28,6 +26,12 @@ jobs:
           # Install jinja2-cli for the 'j2' command. It will be installed to ~/.local/bin
           pip install jinja2-cli
 
+      - name: Add ~/.local/bin to PATH
+        run: |
+          # This command adds ~/.local/bin to the PATH for all subsequent steps in this job.
+          # This is the recommended way to ensure tools installed via pip are found.
+          echo "${{ github.home }}/.local/bin" >> $GITHUB_PATH
+
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
 
@@ -38,8 +42,6 @@ jobs:
           sudo usermod -aG docker $USER || true
           # 'newgrp docker' activates the new group membership for the current shell session.
           # This is crucial for the subsequent 'make' commands to recognize the new group.
-          # Note: This command might not fully persist group membership across all steps,
-          # but the primary issue of 'sudo' for make has been addressed.
           newgrp docker || true
 
       - name: Verify Docker access
@@ -55,19 +57,19 @@ jobs:
 
       - name: Initialize SONiC build
         run: |
-          # The PATH is now set globally for the job, so explicit export here is less critical
-          # but harmless. This step prepares the SONiC build environment.
+          # The PATH is now correctly set by the 'Add ~/.local/bin to PATH' step.
+          # This step prepares the SONiC build environment.
           make init
 
       - name: Configure SONiC for QFX5200
         run: |
-          # The PATH is now set globally for the job.
+          # The PATH is now correctly set by the 'Add ~/.local/bin to PATH' step.
           # 'sudo' was removed previously as per SONiC's requirement.
           make configure PLATFORM=juniper_qfx5200_32c
 
       - name: Build SONiC
         run: |
-          # The PATH is now set globally for the job.
+          # The PATH is now correctly set by the 'Add ~/.local/bin to PATH' step.
           # This step initiates the full SONiC build process, which includes
           # building necessary Docker images internally.
           make all
