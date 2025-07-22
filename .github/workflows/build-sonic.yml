@@ -39,8 +39,19 @@ jobs:
       - name: Verify Docker access
         run: docker version
 
+      - name: Prepare /var/cache/sonic directory
+        run: |
+          # Create the /var/cache/sonic directory and set permissions.
+          # This addresses the 'Permission denied' error encountered during 'make configure'.
+          # Using sudo here as it's a system-level directory creation that requires elevated privileges.
+          sudo mkdir -p /var/cache/sonic
+          sudo chmod 777 /var/cache/sonic # Setting broad permissions to ensure write access for the runner user
+
       - name: Initialize SONiC build
         run: |
+          # Ensure ~/.local/bin is in PATH for the 'j2' command.
+          # pip installs executables to this directory, and it needs to be in PATH for scripts to find them.
+          export PATH="$HOME/.local/bin:$PATH"
           # This step prepares the SONiC build environment.
           make init
 
